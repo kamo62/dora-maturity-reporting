@@ -135,4 +135,4 @@ No live collection is needed to run the suite.
 
 ## Licence
 
-[MIT](LICENSE). Copyright Kamogelo Mashishi.
+[MIT](LICENSE). Copyright Kamogelo.
