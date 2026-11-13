@@ -1,0 +1,76 @@
+{
+  "uid": "cost-savings-roi",
+  "title": "Cost Savings & ROI",
+  "tags": ["devops-metrics"],
+  "schemaVersion": 39,
+  "version": 2,
+  "refresh": "30s",
+  "templating": {
+    "list": [
+      { "name": "hourly_rate", "label": "Hourly Rate (ZAR)", "type": "textbox", "query": "900", "current": { "text": "900", "value": "900" } },
+      { "name": "reviewers", "label": "PR Reviewers", "type": "textbox", "query": "2", "current": { "text": "2", "value": "2" } },
+      { "name": "old_pr_hours", "label": "Old PR Time (hrs)", "type": "textbox", "query": "2.0", "current": { "text": "2.0", "value": "2.0" } },
+      { "name": "new_pr_hours", "label": "New PR Time (hrs)", "type": "textbox", "query": "0.083", "current": { "text": "0.083", "value": "0.083" } },
+      { "name": "prs_per_month", "label": "PRs per Month", "type": "textbox", "query": "50", "current": { "text": "50", "value": "50" } },
+
+      { "name": "old_build_min", "label": "Old Build (min)", "type": "textbox", "query": "15", "current": { "text": "15", "value": "15" } },
+      { "name": "new_build_min", "label": "New Build (min)", "type": "textbox", "query": "5", "current": { "text": "5", "value": "5" } },
+      { "name": "builds_per_day", "label": "Builds per Day", "type": "textbox", "query": "20", "current": { "text": "20", "value": "20" } },
+      { "name": "working_days", "label": "Working Days", "type": "textbox", "query": "22", "current": { "text": "22", "value": "22" } },
+
+      { "name": "old_incidents", "label": "Old Incidents/mo", "type": "textbox", "query": "8", "current": { "text": "8", "value": "8" } },
+      { "name": "new_incidents", "label": "New Incidents/mo", "type": "textbox", "query": "2", "current": { "text": "2", "value": "2" } },
+      { "name": "incident_cost", "label": "Incident Cost (ZAR)", "type": "textbox", "query": "15000", "current": { "text": "15000", "value": "15000" } }
+    ]
+  },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Total Monthly Savings (ZAR)",
+      "id": 10,
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "DevOps Metrics DB" },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT ((($old_pr_hours::numeric - $new_pr_hours::numeric) * $reviewers::numeric * $hourly_rate::numeric * $prs_per_month::numeric) + (((($old_build_min::numeric - $new_build_min::numeric)/60.0) * $hourly_rate::numeric) * $builds_per_day::numeric * $working_days::numeric) + (($old_incidents::numeric - $new_incidents::numeric) * $incident_cost::numeric)) AS total_savings;",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "value"
+      },
+      "fieldConfig": { "defaults": { "unit": "currencyZAR" }, "overrides": [] }
+    },
+    {
+      "type": "table",
+      "title": "Monthly Savings by Category (ZAR)",
+      "id": 1,
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 6 },
+      "datasource": { "type": "postgres", "uid": "DevOps Metrics DB" },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT 'PR Review Savings' AS category, (($old_pr_hours::numeric - $new_pr_hours::numeric) * $reviewers::numeric * $hourly_rate::numeric * $prs_per_month::numeric) AS value UNION ALL SELECT 'Build Time Savings', (((($old_build_min::numeric - $new_build_min::numeric)/60.0) * $hourly_rate::numeric) * $builds_per_day::numeric * $working_days::numeric) UNION ALL SELECT 'Incident Reduction', (($old_incidents::numeric - $new_incidents::numeric) * $incident_cost::numeric);",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "custom": {}, "unit": "currencyZAR" },
+        "overrides": [ { "matcher": { "id": "byName", "options": "category" }, "properties": [ { "id": "unit", "value": "none" } ] } ]
+      },
+      "options": { "showHeader": true }
+    },
+    {
+      "type": "text",
+      "title": "Calculation Reference",
+      "id": 2,
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 16 },
+      "options": {
+        "content": "PR Review: (old_hours - new_hours) × reviewers × rate × PRs/month. Build Time: (old_min - new_min)/60 × rate × builds/day × working_days. Incident Reduction: (old_incidents - new_incidents) × cost/incident.",
+        "mode": "markdown"
+      }
+    }
+  ]
+}

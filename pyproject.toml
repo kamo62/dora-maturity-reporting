@@ -1,0 +1,89 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dora-maturity-reporting"
+version = "0.0.1"
+description = "Azure DevOps maturity assessment and reporting"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+authors = [
+    { name = "Kamogelo Mashishi" }
+]
+dependencies = [
+    "typer>=0.9.0",
+    "rich>=13.7.0",
+    "pandas>=2.1.4",
+    "pandas-stubs>=2.1.4.231227",
+    "openpyxl>=3.1.2",
+    "aiohttp>=3.9.3",
+    "pydantic>=2.6.3",
+    "pydantic-settings>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "ratelimit>=2.2.1",
+    "requests>=2.25.0",
+    "tqdm>=4.60.0",
+    "PyYAML>=6.0.0",
+    "sqlmodel>=0.0.16",
+    "sqlalchemy>=2.0.0",
+    "alembic>=1.13.1",
+    "psycopg[binary]>=3.1.8",
+    "fastapi>=0.103.0",
+    "uvicorn[standard]>=0.23.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=6.0.0",
+    "pytest-asyncio>=0.23.5",
+    "coverage>=7.4.1",
+    "mypy>=1.8.0",
+    "black>=24.2.0",
+    "isort>=5.13.2",
+    "flake8>=7.0.0",
+    "anyio>=4.0.0",
+    "pytest-tornasync>=0.6.0",
+    "pytest-trio>=0.8.0",
+    "pytest-twisted>=1.14.0",
+    "twisted>=25.0.0",
+    "types-PyYAML>=6.0.12"
+]
+
+[project.scripts]
+devops-metrics = "devops_metrics.cli:app"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"devops_metrics.api" = ["ui/*.html", "ui/*.css", "ui/*.js"]
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_optional = true
+exclude = ['build/']
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+addopts = "-v --no-cov-on-fail --cov=src/devops_metrics --cov-config=.coveragerc --cov-report=term-missing --cov-report=xml --cov-report=html -p no:warnings"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"

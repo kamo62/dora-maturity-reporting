@@ -1,0 +1,26 @@
+[run]
+source = src/devops_metrics
+relative_files = True
+omit = 
+    */tests/*
+    */venv/*
+    */__pycache__/*
+    src/devops_metrics/cli.py
+    src/devops_metrics/backend/api/*
+    src/devops_metrics/backend/services/segment_maturity_assessment.py
+    src/devops_metrics/backend/services/raw_data_exporter.py
+    src/devops_metrics/persistence/sinks.py
+
+[paths]
+source =
+    src/devops_metrics
+    */site-packages/devops_metrics
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    pass
+    raise ImportError 

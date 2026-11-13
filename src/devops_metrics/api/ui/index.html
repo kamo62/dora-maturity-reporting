@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DORA Maturity Reporting</title>
+    <meta name="description" content="Real-time DevOps metrics and analytics" />
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+    <header class="header-bar">
+        <div class="brand">
+            <span class="brand-name">DORA Maturity Reporting</span>
+            <span class="brand-subtitle">Azure DevOps metrics</span>
+        </div>
+        <nav class="nav">
+            <a href="#" data-tab="runs" class="active" aria-current="page">Runs</a>
+            <a href="#" data-tab="settings">Settings</a>
+        </nav>
+    </header>
+
+    <div id="connect-bar" class="connect-bar" style="display:none"><div class="bar"></div></div>
+
+    <main>
+        <section id="hero" class="hero">
+            <h2>DevOps Maturity Dashboard</h2>
+            <p class="subtitle">Real-time collection, validation, and analysis of Azure DevOps metrics</p>
+            <div class="chips">
+                <span id="chip-db" class="chip">DB: --</span>
+                <span id="chip-refresh" class="chip">Auto-refresh ON</span>
+            </div>
+            <div class="hero-actions">
+                <button id="start-run-btn" class="btn-primary">Start Run</button>
+            </div>
+        </section>
+
+        <section id="kpis" class="kpis">
+            <div class="tile" aria-live="polite" title="Total number of metrics collection runs recorded">
+                <div class="tile-value" id="kpi-total-runs">--</div>
+                <div class="tile-label">Total Runs</div>
+            </div>
+            <div class="tile" aria-live="polite" title="Number of runs currently in progress or queued">
+                <div class="tile-value" id="kpi-running">--</div>
+                <div class="tile-label">Running</div>
+            </div>
+            <div class="tile" aria-live="polite" title="Successfully completed runs in the last 24 hours">
+                <div class="tile-value" id="kpi-succeeded">--</div>
+                <div class="tile-label">Succeeded (24h)</div>
+            </div>
+            <div class="tile" aria-live="polite" title="Average time taken for successful runs">
+                <div class="tile-value" id="kpi-avg-duration">--</div>
+                <div class="tile-label">Avg Duration</div>
+            </div>
+        </section>
+
+        <section id="trigger-section">
+            <h2>Trigger New Run</h2>
+            <form id="run-form">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="org">Organization (optional)</label>
+                        <input type="text" id="org" placeholder="Leave empty to use default" />
+                    </div>
+
+                    <div class="form-group">
+                        <label>Project Selection</label>
+                        <div class="form-group checkbox">
+                            <input type="checkbox" id="all_projects" checked />
+                            <label for="all_projects">All Projects</label>
+                        </div>
+                        <div id="project-selection-container" style="display:none;">
+                            <input type="text" id="search-projects" placeholder="Search projects..." />
+                            <div class="project-select-controls">
+                                <button type="button" id="select-all-projects" class="btn-link">Select All</button>
+                                <button type="button" id="deselect-all-projects" class="btn-link">Deselect All</button>
+                                <span id="selected-count" class="selected-count">0 selected</span>
+                            </div>
+                            <div id="project-list" class="project-list" aria-label="Select one or more projects">
+                                <div class="loading-projects">Loading projects...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="run_label">Run Label (optional) <span id="label-char-count" style="color: #666; font-size: 0.75rem; font-weight: normal;"></span></label>
+                        <input type="text" id="run_label" placeholder="Leave empty for auto-generated label" maxlength="100" />
+                        <div style="font-size: 0.75rem; color: #666; margin-top: 0.25rem;">
+                            Examples: "Q1 2025 Review", "Weekly Check", "Pre-Release Audit"
+                        </div>
+                    </div>
+                </div>
+
+                <div class="advanced-options-container">
+                    <button type="button" id="toggle-advanced" class="advanced-toggle">
+                        <span class="toggle-icon">▶</span> Advanced Options
+                    </button>
+
+                    <div id="advanced-options" class="advanced-options" style="display: none;">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Execution Profile</label>
+                                <div class="radio-group">
+                                    <label><input type="radio" name="profile" value="normal" checked /> Normal</label>
+                                    <label><input type="radio" name="profile" value="minimal" /> Minimal</label>
+                                    <label><input type="radio" name="profile" value="fast" /> Fast</label>
+                                    <label><input type="radio" name="profile" value="full" /> Full</label>
+                                </div>
+                            </div>
+
+                            <div class="form-group checkbox">
+                                <input type="checkbox" id="write_files" checked />
+                                <label for="write_files">Write Files</label>
+                            </div>
+
+                            <div class="form-group checkbox">
+                                <input type="checkbox" id="write_db" checked />
+                                <label for="write_db">Write to Database</label>
+                            </div>
+
+                            <div class="form-group checkbox">
+                                <input type="checkbox" id="include_maturity" checked />
+                                <label for="include_maturity">Include Maturity Assessment</label>
+                            </div>
+
+                            <div class="form-group checkbox">
+                                <input type="checkbox" id="include_segments" checked />
+                                <label for="include_segments">Include Segment Assessment</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit">Start Collection</button>
+            </form>
+            <div id="trigger-status"></div>
+        </section>
+
+        <section id="runs-section">
+            <h2>Recent Runs</h2>
+            <div class="controls">
+                <button id="refresh-btn">Refresh</button>
+                <label>
+                    <input type="checkbox" id="auto-refresh" checked />
+                    Auto-refresh (10s)
+                </label>
+                <span id="last-updated" class="last-updated">Last updated: --</span>
+
+                <div id="status-chips" class="chip-group" role="tablist" aria-label="Status Filter">
+                    <button class="chip chip-filter active" data-status="">All</button>
+                    <button class="chip chip-filter" data-status="queued">Queued</button>
+                    <button class="chip chip-filter" data-status="running">Running</button>
+                    <button class="chip chip-filter" data-status="succeeded">Succeeded</button>
+                    <button class="chip chip-filter" data-status="failed">Failed</button>
+                    <button class="chip chip-filter" data-status="cancelled">Cancelled</button>
+                </div>
+            </div>
+
+            <div class="filters-row">
+                <input type="text" id="search-runs" placeholder="Search by run label..." />
+                <input type="date" id="filter-date-from" placeholder="From date" />
+                <input type="date" id="filter-date-to" placeholder="To date" />
+                <button id="clear-filters" class="btn-secondary">Clear Filters</button>
+            </div>
+
+            <div id="bulk-actions" class="bulk-actions" style="display: none;">
+                <span id="selected-runs-count">0 selected</span>
+                <button id="bulk-cancel" class="btn-secondary" style="background: var(--warning);">Cancel Selected</button>
+                <button id="bulk-delete" class="btn-danger">Delete Selected</button>
+            </div>
+
+            <table id="runs-table" aria-live="polite">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;"><input type="checkbox" id="select-all-runs" title="Select all runs" /></th>
+                        <th>Status</th>
+                        <th>Run Label</th>
+                        <th>Started</th>
+                        <th>Finished</th>
+                        <th>Duration</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td colspan="6" class="loading">Loading runs...</td></tr>
+                </tbody>
+            </table>
+
+            <div id="runs-cards" class="runs-cards" aria-hidden="true"></div>
+        </section>
+
+        <section id="run-details" class="details" style="display:none">
+            <h2>Run Details</h2>
+            <div class="tabs">
+                <button class="tab-btn active" data-pane="summary">Summary</button>
+                <button class="tab-btn" data-pane="artifacts">Artifacts</button>
+                <button class="tab-btn" data-pane="validation">Validation</button>
+            </div>
+            <div id="pane-summary" class="pane"></div>
+            <div id="pane-artifacts" class="pane" style="display:none"></div>
+            <div id="pane-validation" class="pane" style="display:none"></div>
+        </section>
+
+        <section id="settings-section" style="display:none">
+            <h2>Exemption Management</h2>
+
+            <div class="exemptions-actions">
+                <button id="btn-add-exemption" class="btn-primary">+ Add New Exemption</button>
+                <button id="btn-reload-exemptions">Reload</button>
+            </div>
+
+            <div id="exemptions-loading" class="loading-state" style="display:none">
+                <div class="spinner"></div>
+                <p>Loading exemptions...</p>
+            </div>
+
+            <div id="exemptions-error" class="error-state" style="display:none"></div>
+
+            <div id="exemptions-table-container" class="table-container" style="display:none">
+                <table id="exemptions-table">
+                    <thead>
+                        <tr>
+                            <th>Project</th>
+                            <th>Exempt Metrics</th>
+                            <th>Exempt Dimensions</th>
+                            <th>Owner</th>
+                            <th>Reason</th>
+                            <th>Effective Date</th>
+                            <th>Expiration</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="exemptions-tbody">
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="exemptions-empty" class="empty-state" style="display:none">
+                <p>No exemptions configured</p>
+                <button id="btn-create-first">Create First Exemption</button>
+            </div>
+
+            <hr style="margin: 3rem 0; border: none; border-top: 1px solid #e0e0e0;" />
+
+            <h2>Grafana Configuration</h2>
+            <div class="grafana-config">
+                <p style="color: #666; margin-bottom: 1rem; font-size: 0.875rem;">
+                    Configure the Grafana dashboard URL (e.g., http://localhost:3000)
+                </p>
+                <div class="form-group" style="max-width: 600px;">
+                    <label for="grafana-url">Grafana URL</label>
+                    <input type="url" id="grafana-url-input" placeholder="http://localhost:3000" style="padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 0.95rem;" />
+                </div>
+                <div class="exemptions-actions" style="margin-top: 1rem;">
+                    <button id="btn-save-grafana-url" class="btn-primary">Save Grafana URL</button>
+                    <button id="btn-test-grafana-url" class="btn-secondary">Test Connection</button>
+                </div>
+                <div id="grafana-status" style="margin-top: 1rem;"></div>
+            </div>
+
+            <hr style="margin: 3rem 0; border: none; border-top: 1px solid #e0e0e0;" />
+
+            <h2>Database Management</h2>
+            <div class="exemptions-actions">
+                <button id="btn-clear-database" class="btn-danger" style="background: #d32f2f;">Clear All Database Data</button>
+            </div>
+            <p style="color: #666; margin-top: 0.5rem; font-size: 0.875rem;">
+                ⚠️ Warning: This will permanently delete all runs, metrics, and raw data from the database. This action cannot be undone.
+                Only available in local/dev environments.
+            </p>
+
+            <div id="database-status" style="margin-top: 1rem;"></div>
+        </section>
+
+        <div id="exemption-modal" class="modal" style="display:none">
+            <div class="modal-overlay"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="modal-title">Add New Exemption</h3>
+                    <button class="modal-close" id="btn-close-modal">&times;</button>
+                </div>
+
+                <div class="modal-body">
+                    <form id="exemption-form">
+                        <div class="form-group">
+                            <label>Select Project(s) <span class="required">*</span></label>
+                            <div id="modal-project-search" class="search-box">
+                                <input type="text" id="search-projects" placeholder="Search projects..." />
+                            </div>
+                            <div id="modal-project-list" class="project-select-grid"></div>
+                            <div class="form-error" id="error-projects"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Exempt Metrics</label>
+                            <div class="search-box">
+                                <input type="text" id="search-metrics" placeholder="Search metrics..." />
+                            </div>
+                            <div id="modal-metrics" class="checklist-modal"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Exempt Dimensions</label>
+                            <div class="search-box">
+                                <input type="text" id="search-dimensions" placeholder="Search dimensions..." />
+                            </div>
+                            <div id="modal-dimensions" class="checklist-modal"></div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="modal-owner">Owner <span class="required">*</span></label>
+                                <input type="text" id="modal-owner" placeholder="Approver/Owner" required />
+                                <div class="form-error" id="error-owner"></div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="modal-reason">Reason <span class="required">*</span></label>
+                                <input type="text" id="modal-reason" placeholder="Why is this exempt?" required />
+                                <div class="form-error" id="error-reason"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="modal-effective">Effective Date <span class="required">*</span></label>
+                                <input type="date" id="modal-effective" required />
+                                <div class="form-error" id="error-effective"></div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="modal-expiration">Expiration Date</label>
+                                <input type="date" id="modal-expiration" />
+                                <div class="form-error" id="error-expiration"></div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="modal-footer">
+                    <button id="btn-cancel" class="btn-secondary">Cancel</button>
+                    <button id="btn-save-exemption" class="btn-primary">Save Exemption</button>
+                </div>
+
+                <div id="modal-status" class="modal-status"></div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <p class="footer-copyright">DORA Maturity Reporting · MIT License</p>
+            </div>
+            <div class="footer-links">
+                <a href="/docs">API Reference</a>
+                <a href="#" id="grafana-link" target="_blank" rel="noopener">Grafana Dashboard</a>
+            </div>
+        </div>
+    </footer>
+
+    <script src="app.js?v=2"></script>
+</body>
+</html>

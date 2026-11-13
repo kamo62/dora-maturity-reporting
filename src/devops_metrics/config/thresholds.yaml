@@ -1,0 +1,29 @@
+version: "1.0"
+metrics:
+  code_coverage:
+    name: "code_coverage"
+    reverse: false
+    levels:
+      level1: 20.0
+      level2: 30.0
+      level3: 50.0
+      level4: 65.0
+      level5: 80.0
+  test_pass_rate:
+    name: "test_pass_rate"
+    reverse: false
+    levels:
+      level1: 60.0
+      level2: 70.0
+      level3: 80.0
+      level4: 90.0
+      level5: 95.0
+  build_success_rate:
+    name: "build_success_rate"
+    reverse: false
+    levels:
+      level1: 40.0
+      level2: 50.0
+      level3: 70.0
+      level4: 80.0
+      level5: 90.0

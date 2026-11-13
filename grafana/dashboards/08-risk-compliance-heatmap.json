@@ -1,0 +1,19 @@
+{
+  "uid": "risk-compliance",
+  "title": "Risk & Compliance Heatmap",
+  "tags": ["devops-metrics", "risk"],
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "templating": {
+    "list": [
+      { "name": "segment", "label": "Segment", "type": "query", "datasource": { "type": "postgres", "uid": "DevOps Metrics DB" }, "refresh": 1, "includeAll": true, "allValue": "", "query": "SELECT DISTINCT metric_json->>'segment' AS segment FROM metrics WHERE metric_json IS NOT NULL AND metric_json->>'segment' IS NOT NULL ORDER BY 1;", "current": { "text": "All", "value": "" } },
+      { "name": "project", "label": "Project", "type": "query", "datasource": { "type": "postgres", "uid": "DevOps Metrics DB" }, "refresh": 1, "includeAll": true, "allValue": "", "multi": true, "query": "SELECT DISTINCT project FROM metrics WHERE project IS NOT NULL AND (CASE WHEN COALESCE('$segment','') = '' THEN TRUE ELSE metric_json->>'segment' = '$segment' END) ORDER BY 1;", "current": { "text": "All", "value": ["$__all"] } }
+    ]
+  },
+  "panels": [
+    { "type": "table", "title": "Failing Metrics by Project", "id": 1, "gridPos": { "h": 12, "w": 12, "x": 0, "y": 0 }, "datasource": { "type": "postgres", "uid": "DevOps Metrics DB" }, "targets": [ { "format": "table", "rawSql": "SELECT COALESCE(project,'Unknown') AS project, SUM(CASE WHEN status='failing' THEN 1 ELSE 0 END) AS failing_count FROM metrics WHERE (CASE WHEN COALESCE('$segment','') = '' THEN TRUE ELSE metric_json->>'segment' = '$segment' END) AND (CASE WHEN COALESCE('${project:csv}','') = '' THEN TRUE ELSE project IN (${project:csv}) END) GROUP BY COALESCE(project,'Unknown') ORDER BY failing_count DESC NULLS LAST;", "refId": "A" } ] },
+    { "type": "bargauge", "title": "Risk Heat by Project", "id": 2, "gridPos": { "h": 12, "w": 12, "x": 12, "y": 0 }, "datasource": { "type": "postgres", "uid": "DevOps Metrics DB" }, "targets": [ { "format": "table", "rawSql": "SELECT COALESCE(project,'Unknown') AS project, SUM(CASE WHEN status='failing' THEN 1 ELSE 0 END) AS failing_count FROM metrics WHERE (CASE WHEN COALESCE('$segment','') = '' THEN TRUE ELSE metric_json->>'segment' = '$segment' END) AND (CASE WHEN COALESCE('${project:csv}','') = '' THEN TRUE ELSE project IN (${project:csv}) END) GROUP BY COALESCE(project,'Unknown') ORDER BY failing_count DESC NULLS LAST;", "refId": "A" } ], "options": { "displayMode": "lcd" }, "fieldConfig": { "defaults": { "unit": "none" } } },
+    { "type": "text", "title": "Compliance Notes", "id": 3, "gridPos": { "h": 6, "w": 24, "x": 0, "y": 12 }, "options": { "mode": "markdown", "content": "This view approximates risk as the count of metrics with status='failing'. To enrich with exemption aging and policy pass rate, integrate exemptions into the database or use Grafana JSON/CSV plugins." } }
+  ]
+}
