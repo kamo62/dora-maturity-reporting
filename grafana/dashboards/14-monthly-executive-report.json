@@ -1,0 +1,125 @@
+{
+  "uid": "monthly-exec-report",
+  "title": "Monthly Executive Report",
+  "tags": ["devops-metrics", "executive", "monthly"],
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "templating": {
+    "list": [
+      {
+        "name": "months_back",
+        "label": "Months to Show",
+        "type": "custom",
+        "options": [
+          {"text": "6 months", "value": "6"},
+          {"text": "8 months", "value": "8"},
+          {"text": "12 months", "value": "12"}
+        ],
+        "current": {"text": "8 months", "value": "8"}
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "table",
+      "title": "Segment Maturity Level Over Time",
+      "id": 1,
+      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 0},
+      "datasource": {"type": "postgres", "uid": "DevOps Metrics DB"},
+      "description": "Monthly distribution of segments across maturity levels (1=Initial, 2=Managed, 3=Defined, 4=Predictable, 5=Optimizing)",
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "WITH monthly_levels AS (\n  SELECT\n    DATE_TRUNC('month', observed_at) as month,\n    project,\n    CASE\n      WHEN score >= 0.9 THEN 5\n      WHEN score >= 0.7 THEN 4\n      WHEN score >= 0.5 THEN 3\n      WHEN score >= 0.3 THEN 2\n      ELSE 1\n    END as maturity_level\n  FROM metrics\n  WHERE metric_key = 'overall_maturity_score'\n  AND observed_at >= NOW() - INTERVAL '$months_back months'\n),\nlevel_counts AS (\n  SELECT\n    month,\n    maturity_level,\n    COUNT(DISTINCT project) as project_count\n  FROM monthly_levels\n  GROUP BY month, maturity_level\n)\nSELECT\n  TO_CHAR(month, 'Mon YYYY') as \"Month\",\n  COALESCE(SUM(CASE WHEN maturity_level = 1 THEN project_count ELSE 0 END), 0) as \"Initial (1)\",\n  COALESCE(SUM(CASE WHEN maturity_level = 2 THEN project_count ELSE 0 END), 0) as \"Managed (2)\",\n  COALESCE(SUM(CASE WHEN maturity_level = 3 THEN project_count ELSE 0 END), 0) as \"Defined (3)\",\n  COALESCE(SUM(CASE WHEN maturity_level = 4 THEN project_count ELSE 0 END), 0) as \"Predictable (4)\",\n  COALESCE(SUM(CASE WHEN maturity_level = 5 THEN project_count ELSE 0 END), 0) as \"Optimizing (5)\",\n  SUM(project_count) as \"Total\"\nFROM level_counts\nGROUP BY month\nORDER BY month DESC;",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "center",
+            "displayMode": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Month"},
+            "properties": [
+              {"id": "custom.width", "value": 150}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Total"},
+            "properties": [
+              {"id": "custom.displayMode", "value": "color-background"},
+              {"id": "color", "value": {"mode": "palette-classic"}}
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      }
+    },
+    {
+      "type": "table",
+      "title": "Top 5 Performing Segments (Latest Scores)",
+      "id": 2,
+      "gridPos": {"h": 10, "w": 12, "x": 0, "y": 12},
+      "datasource": {"type": "postgres", "uid": "DevOps Metrics DB"},
+      "description": "Top 5 segments ranked by most recent maturity score",
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "WITH latest_segment_scores AS (\n  SELECT DISTINCT ON (metric_json->>'segment')\n    metric_json->>'segment' as segment_name,\n    score,\n    observed_at,\n    COUNT(DISTINCT project) OVER (PARTITION BY metric_json->>'segment') as project_count,\n    CASE\n      WHEN score >= 0.9 THEN 'Optimizing (5)'\n      WHEN score >= 0.7 THEN 'Predictable (4)'\n      WHEN score >= 0.5 THEN 'Standardized (3)'\n      WHEN score >= 0.3 THEN 'Managed (2)'\n      ELSE 'Initial (1)'\n    END as maturity_level\n  FROM metrics\n  WHERE metric_key = 'segment_maturity_score'\n  AND metric_json->>'segment' IS NOT NULL\n  ORDER BY metric_json->>'segment', observed_at DESC\n)\nSELECT\n  segment_name as \"Team\",\n  ROUND((score * 100)::numeric, 2) as \"Latest Score %\",\n  maturity_level as \"Level (Latest)\",\n  project_count as \"Projects\"\nFROM latest_segment_scores\nORDER BY score DESC\nLIMIT 5;",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Latest Score %"},
+            "properties": [
+              {"id": "custom.displayMode", "value": "gradient-gauge"},
+              {"id": "max", "value": 100},
+              {"id": "min", "value": 0},
+              {"id": "color", "value": {
+                "mode": "thresholds"
+              }},
+              {"id": "thresholds", "value": {
+                "mode": "absolute",
+                "steps": [
+                  {"value": 0, "color": "red"},
+                  {"value": 30, "color": "orange"},
+                  {"value": 50, "color": "yellow"},
+                  {"value": 70, "color": "green"},
+                  {"value": 90, "color": "dark-green"}
+                ]
+              }}
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "text",
+      "title": "Export Instructions",
+      "id": 3,
+      "gridPos": {"h": 10, "w": 12, "x": 12, "y": 12},
+      "options": {
+        "mode": "markdown",
+        "content": "## Monthly Report Export\n\n### How to Export for Presentations:\n\n1. **Screenshot/PNG Export:**\n   - Click the panel title → Share → Link\n   - Copy direct link or use panel screenshot\n   - Paste into PowerPoint slides\n\n2. **CSV/Excel Export:**\n   - Click panel menu (⋮) → Inspect → Data\n   - Click \"Download CSV\"\n   - Import into Excel for further formatting\n\n3. **PDF Export (requires Grafana Image Renderer):**\n   - Dashboard menu → Share → PDF\n   - Configure layout and export\n\n### Data Freshness:\n- Tables update every 30 seconds\n- Data reflects all runs in database\n- Use time range picker for historical views\n\n### Notes:\n- Insights panel excluded per user request\n- Manual insights still required for slides\n- Segment filtering available if needed"
+      }
+    }
+  ]
+}

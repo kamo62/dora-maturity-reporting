@@ -1,0 +1,22 @@
+{
+  "uid": "targets-actuals",
+  "title": "Targets vs Actuals",
+  "tags": ["devops-metrics", "executive"],
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "templating": {
+    "list": [
+      { "name": "segment", "label": "Segment", "type": "query", "datasource": { "type": "postgres", "uid": "DevOps Metrics DB" }, "refresh": 1, "includeAll": true, "allValue": "", "query": "SELECT DISTINCT metric_json->>'segment' AS segment FROM metrics WHERE metric_json IS NOT NULL AND metric_json->>'segment' IS NOT NULL ORDER BY 1;", "current": { "text": "All", "value": "" } },
+      { "name": "project", "label": "Project", "type": "query", "datasource": { "type": "postgres", "uid": "DevOps Metrics DB" }, "refresh": 1, "includeAll": true, "allValue": "", "multi": true, "query": "SELECT DISTINCT project FROM metrics WHERE project IS NOT NULL AND (CASE WHEN COALESCE('$segment','') = '' THEN TRUE ELSE metric_json->>'segment' = '$segment' END) ORDER BY 1;", "current": { "text": "All", "value": ["$__all"] } },
+      { "name": "maturity_target", "label": "Maturity Target", "type": "textbox", "query": "0.8", "current": { "text": "0.8", "value": "0.8" } },
+      { "name": "success_target", "label": "Success Rate Target %", "type": "textbox", "query": "95", "current": { "text": "95", "value": "95" } }
+    ]
+  },
+  "panels": [
+    { "type": "stat", "title": "Actual Maturity (Latest)", "id": 1, "gridPos": { "h": 6, "w": 8, "x": 0, "y": 0 }, "datasource": { "type": "postgres", "uid": "DevOps Metrics DB" }, "targets": [ { "format": "table", "rawSql": "WITH latest AS (SELECT DISTINCT ON (project) project, COALESCE(score, metric_value) AS val FROM metrics WHERE metric_key='overall_maturity_score' AND (CASE WHEN COALESCE('$segment','') = '' THEN TRUE ELSE metric_json->>'segment' = '$segment' END) ORDER BY project, observed_at DESC) SELECT ROUND(AVG(val)::numeric,3) FROM latest WHERE (CASE WHEN COALESCE('${project:csv}','') = '' THEN TRUE ELSE project IN (${project:csv}) END);", "refId": "A" } ], "fieldConfig": { "defaults": { "unit": "none" } } },
+    { "type": "stat", "title": "Maturity Target", "id": 2, "gridPos": { "h": 6, "w": 8, "x": 8, "y": 0 }, "datasource": null, "targets": [], "options": { "textMode": "value" }, "fieldConfig": { "defaults": { "unit": "none" } }, "transformations": [ { "id": "calculateField", "options": { "mode": "reduceRow", "reduce": { "reducer": "lastNotNull" }, "alias": "maturity_target", "binary": { "left": "", "operator": "+", "right": "${maturity_target}" } } } ] },
+    { "type": "stat", "title": "Success Rate (30d) %", "id": 3, "gridPos": { "h": 6, "w": 8, "x": 16, "y": 0 }, "datasource": { "type": "postgres", "uid": "DevOps Metrics DB" }, "targets": [ { "format": "table", "rawSql": "SELECT ROUND(100.0 * SUM(CASE WHEN status='succeeded' THEN 1 ELSE 0 END)/NULLIF(COUNT(*),0), 1) AS success_rate FROM runs WHERE COALESCE(finished_at, started_at) >= NOW() - INTERVAL '30 days' AND (CASE WHEN COALESCE('${project:csv}','') = '' THEN TRUE ELSE project IN (${project:csv}) END);", "refId": "A" } ], "fieldConfig": { "defaults": { "unit": "percent" } } },
+    { "type": "table", "title": "Delta vs Targets", "id": 4, "gridPos": { "h": 10, "w": 24, "x": 0, "y": 6 }, "datasource": { "type": "postgres", "uid": "DevOps Metrics DB" }, "targets": [ { "format": "table", "rawSql": "WITH latest AS (SELECT DISTINCT ON (project) project, COALESCE(score, metric_value) AS val FROM metrics WHERE metric_key='overall_maturity_score' AND (CASE WHEN COALESCE('$segment','') = '' THEN TRUE ELSE metric_json->>'segment' = '$segment' END) ORDER BY project, observed_at DESC), maturity AS (SELECT ROUND(AVG(val)::numeric,3) AS actual FROM latest WHERE (CASE WHEN COALESCE('${project:csv}','') = '' THEN TRUE ELSE project IN (${project:csv}) END)), success AS (SELECT ROUND(100.0 * SUM(CASE WHEN status='succeeded' THEN 1 ELSE 0 END)/NULLIF(COUNT(*),0), 1) AS actual FROM runs WHERE COALESCE(finished_at, started_at) >= NOW() - INTERVAL '30 days' AND (CASE WHEN COALESCE('${project:csv}','') = '' THEN TRUE ELSE project IN (${project:csv}) END)) SELECT 'Maturity' AS kpi, m.actual AS actual, ${maturity_target}::numeric AS target, (m.actual - ${maturity_target}::numeric) AS delta FROM maturity m UNION ALL SELECT 'Success Rate %', s.actual, ${success_target}::numeric, (s.actual - ${success_target}::numeric) FROM success s;", "refId": "A" } ] }
+  ]
+}

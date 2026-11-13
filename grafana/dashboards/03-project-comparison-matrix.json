@@ -1,0 +1,26 @@
+{
+  "uid": "project-comparison",
+  "title": "Project Comparison Matrix",
+  "tags": ["devops-metrics"],
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "table",
+      "title": "Project Run Outcomes",
+      "id": 1,
+      "gridPos": { "h": 16, "w": 24, "x": 0, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "DevOps Metrics DB" },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT COALESCE(project, 'Unknown') AS project, COUNT(*) AS total_runs, SUM(CASE WHEN status = 'succeeded' THEN 1 ELSE 0 END) AS succeeded, SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed FROM runs GROUP BY COALESCE(project, 'Unknown') ORDER BY project;",
+          "refId": "A"
+        }
+      ],
+      "options": { "showHeader": true }
+    }
+  ]
+}
+

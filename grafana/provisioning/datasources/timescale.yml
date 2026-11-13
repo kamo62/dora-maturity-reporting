@@ -1,0 +1,15 @@
+apiVersion: 1
+
+datasources:
+  - name: DevOps Metrics DB
+    type: postgres
+    access: proxy
+    url: db:5432
+    database: metrics_db
+    user: metrics_user
+    secureJsonData:
+      password: $POSTGRES_PASSWORD
+    jsonData:
+      sslmode: disable
+      postgresVersion: 1600
+      timescaledb: true

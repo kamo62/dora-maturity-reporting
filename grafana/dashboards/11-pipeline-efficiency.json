@@ -1,0 +1,17 @@
+{
+  "uid": "pipeline-efficiency",
+  "title": "Pipeline Efficiency",
+  "tags": ["devops-metrics", "pipeline"],
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "templating": {"list": [
+    { "name": "project", "label": "Project", "type": "query", "datasource": { "type": "postgres", "uid": "DevOps Metrics DB" }, "refresh": 1, "includeAll": true, "allValue": "", "multi": true, "query": "SELECT DISTINCT project FROM runs WHERE project IS NOT NULL ORDER BY 1;", "current": { "text": "All", "value": ["$__all"] } }
+  ]},
+  "panels": [
+    { "type": "timeseries", "title": "Success Rate (daily, %)", "id": 1, "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 }, "datasource": { "type": "postgres", "uid": "DevOps Metrics DB" }, "targets": [ { "format": "time_series", "rawSql": "SELECT time_bucket('1 day', COALESCE(finished_at, started_at)) AS time, ROUND(100.0 * SUM(CASE WHEN status='succeeded' THEN 1 ELSE 0 END)/NULLIF(COUNT(*),0), 1) AS success_rate FROM runs WHERE $__timeFilter(COALESCE(finished_at, started_at)) AND (CASE WHEN COALESCE('${project:csv}','') = '' THEN TRUE ELSE project IN (${project:csv}) END) GROUP BY time ORDER BY time;", "refId": "A" } ], "fieldConfig": { "defaults": { "unit": "percent" } } },
+    { "type": "timeseries", "title": "Avg Duration (daily, min)", "id": 2, "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 }, "datasource": { "type": "postgres", "uid": "DevOps Metrics DB" }, "targets": [ { "format": "time_series", "rawSql": "SELECT time_bucket('1 day', COALESCE(finished_at, started_at)) AS time, ROUND(AVG(EXTRACT(EPOCH FROM (finished_at - started_at)))/60.0, 1) AS avg_min FROM runs WHERE $__timeFilter(COALESCE(finished_at, started_at)) AND finished_at IS NOT NULL AND started_at IS NOT NULL AND (CASE WHEN COALESCE('${project:csv}','') = '' THEN TRUE ELSE project IN (${project:csv}) END) GROUP BY time ORDER BY time;", "refId": "A" } ], "fieldConfig": { "defaults": { "unit": "min" } } },
+    { "type": "table", "title": "Top Slow Projects (30d)", "id": 3, "gridPos": { "h": 10, "w": 24, "x": 0, "y": 16 }, "datasource": { "type": "postgres", "uid": "DevOps Metrics DB" }, "targets": [ { "format": "table", "rawSql": "SELECT COALESCE(project,'Unknown') AS project, ROUND(AVG(EXTRACT(EPOCH FROM (finished_at - started_at))/60.0), 1) AS avg_min FROM runs WHERE finished_at IS NOT NULL AND started_at IS NOT NULL AND COALESCE(finished_at, started_at) >= NOW() - INTERVAL '30 days' GROUP BY COALESCE(project,'Unknown') ORDER BY avg_min DESC NULLS LAST LIMIT 10;", "refId": "A" } ] }
+  ]
+}
+

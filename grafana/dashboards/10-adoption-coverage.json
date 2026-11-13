@@ -1,0 +1,18 @@
+{
+  "uid": "adoption-coverage",
+  "title": "Adoption & Coverage",
+  "tags": ["devops-metrics", "adoption"],
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "templating": {"list": [
+    { "name": "segment", "label": "Segment", "type": "query", "datasource": { "type": "postgres", "uid": "DevOps Metrics DB" }, "refresh": 1, "includeAll": true, "allValue": "", "query": "SELECT DISTINCT metric_json->>'segment' AS segment FROM metrics WHERE metric_json IS NOT NULL AND metric_json->>'segment' IS NOT NULL ORDER BY 1;", "current": { "text": "All", "value": "" } },
+    { "name": "project", "label": "Project", "type": "query", "datasource": { "type": "postgres", "uid": "DevOps Metrics DB" }, "refresh": 1, "includeAll": true, "allValue": "", "multi": true, "query": "SELECT DISTINCT project FROM metrics WHERE project IS NOT NULL AND (CASE WHEN COALESCE('$segment','') = '' THEN TRUE ELSE metric_json->>'segment' = '$segment' END) ORDER BY 1;", "current": { "text": "All", "value": ["$__all"] } }
+  ]},
+  "panels": [
+    { "type": "stat", "title": "Projects Onboarded", "id": 1, "gridPos": { "h": 6, "w": 8, "x": 0, "y": 0 }, "datasource": { "type": "postgres", "uid": "DevOps Metrics DB" }, "targets": [ { "format": "table", "rawSql": "SELECT COUNT(DISTINCT project) FROM runs WHERE project IS NOT NULL;", "refId": "A" } ] },
+    { "type": "stat", "title": "% Projects with Data (30d)", "id": 2, "gridPos": { "h": 6, "w": 8, "x": 8, "y": 0 }, "datasource": { "type": "postgres", "uid": "DevOps Metrics DB" }, "targets": [ { "format": "table", "rawSql": "WITH total AS (SELECT COUNT(DISTINCT project) AS n FROM runs WHERE project IS NOT NULL), recent AS (SELECT COUNT(DISTINCT project) AS n FROM runs WHERE project IS NOT NULL AND COALESCE(finished_at, started_at) >= NOW() - INTERVAL '30 days') SELECT ROUND(100.0 * recent.n/NULLIF(total.n,0), 1) FROM total, recent;", "refId": "A" } ], "fieldConfig": { "defaults": { "unit": "percent" } } },
+    { "type": "stat", "title": "% Coverage: Maturity Metric", "id": 3, "gridPos": { "h": 6, "w": 8, "x": 16, "y": 0 }, "datasource": { "type": "postgres", "uid": "DevOps Metrics DB" }, "targets": [ { "format": "table", "rawSql": "WITH allp AS (SELECT COUNT(DISTINCT project) AS n FROM runs WHERE project IS NOT NULL), cov AS (SELECT COUNT(DISTINCT project) AS n FROM metrics WHERE metric_key='overall_maturity_score' AND (CASE WHEN COALESCE('$segment','') = '' THEN TRUE ELSE metric_json->>'segment' = '$segment' END)) SELECT ROUND(100.0 * cov.n/NULLIF(allp.n,0), 1) FROM allp, cov;", "refId": "A" } ], "fieldConfig": { "defaults": { "unit": "percent" } } },
+    { "type": "table", "title": "Stale Projects (>30d)", "id": 4, "gridPos": { "h": 10, "w": 24, "x": 0, "y": 6 }, "datasource": { "type": "postgres", "uid": "DevOps Metrics DB" }, "targets": [ { "format": "table", "rawSql": "SELECT COALESCE(project,'Unknown') AS project, MAX(COALESCE(finished_at, started_at)) AS last_seen FROM runs GROUP BY COALESCE(project,'Unknown') HAVING MAX(COALESCE(finished_at, started_at)) < NOW() - INTERVAL '30 days' ORDER BY last_seen;", "refId": "A" } ] }
+  ]
+}

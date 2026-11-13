@@ -1,0 +1,36 @@
+{
+  "uid": "team-performance",
+  "title": "Team Performance & Actions",
+  "tags": ["devops-metrics"],
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "table",
+      "title": "Latest Runs (Last 20)",
+      "id": 1,
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "DevOps Metrics DB" },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT id::text AS run_id, COALESCE(project,'Unknown') AS project, status, started_at, finished_at, ROUND(EXTRACT(EPOCH FROM (finished_at - started_at)) / 60.0, 1) AS duration_min FROM runs ORDER BY COALESCE(finished_at, started_at) DESC LIMIT 20;",
+          "refId": "A"
+        }
+      ],
+      "options": { "showHeader": true }
+    },
+    {
+      "type": "text",
+      "title": "Suggested Actions",
+      "id": 2,
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 12 },
+      "options": {
+        "content": "Review failing runs for repeated projects to identify systemic issues. Prioritize projects with longest average durations for pipeline optimization.",
+        "mode": "markdown"
+      }
+    }
+  ]
+}
+
