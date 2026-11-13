@@ -133,14 +133,6 @@ python -m pytest tests/
 Tests use mocks for remote services. Keep test credentials and records synthetic.
 No live collection is needed to run the suite.
 
-## Changes
-
-Version `0.0.1`: removed manual staff/project
-assignments and executive-owner exports, removed bundled documentation and generated
-artefacts, restricted configuration discovery and source access, and repositioned
-this README around holistic DORA reporting. The Python namespace remains
-`devops_metrics`, and the installed command remains `devops-metrics`.
-
 ## Licence
 
 [MIT](LICENSE). Copyright Kamogelo Mashishi.
